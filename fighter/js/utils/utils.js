@@ -231,7 +231,10 @@ define(function(require, exports, module) {
 			//二值化
 			this.OTSUAlgorithm(canvas);
 			//切割
-			var fontRects = this.dividedImage(canvas, minWidth, minHeight);
+			var fontRects = this.dividedImage(canvas, {
+				minWidth: minWidth,
+				minHeight: minHeight
+			});
 			var len = fontRects.length,
 				imgData = null,
 				result = '';
@@ -416,7 +419,7 @@ define(function(require, exports, module) {
 					}
 				}
 
-				if (yStart && lineBgPointCount === w) { //找到结束y坐标
+				if (yStart && lineBgPointCount === w && y - yStart >= minHeight) { //找到结束y坐标
 					xStart = null, xEnd = null;
 					var _height = y - yStart;
 					for (var x = 0; x < w; x++) {
@@ -438,12 +441,12 @@ define(function(require, exports, module) {
 							}
 						};
 
-						if (xStart && lineBgPointCount === _height) { //找到结束x坐标
+						if (xStart && lineBgPointCount === _height && x - xStart >= minWidth) { //找到结束x坐标
 							xEnd = x;
 							var _width = xEnd - xStart;
 							if (_width > minWidth && _height > minHeight) {
 								frames.push([xStart, yStart, _width, _height]);
-								onEach && onEach.apply(callContext, [frames.length - 1, frames[frames.length - 1]]);
+								onEach && onEach.apply(callContext, [frames.length - 1, frames[frames.length - 1], canvas]);
 							}
 							xStart = null;
 						}
@@ -452,6 +455,34 @@ define(function(require, exports, module) {
 				}
 			}
 			return frames;
+		},
+		loadImg: function(imgs, callback, context) {
+			if (!imgs || imgs.length === 0) {
+				return;
+			}
+			var _loadedImg = {},
+				_left = imgs.length,
+				l = imgs.length,
+				img;
+			for (var i = 0; i < l; i++) {
+				img = imgs[i];
+				var imgNode = new Image();
+				imgNode.onload = _onImgLoad;
+				imgNode.id = img.id;
+				imgNode.src = img.src;
+			};
+
+			function _onImgLoad() {
+				_loadedImg[this.id] = this;
+				_left--;
+				0 === _left && callback && callback.call(context, _loadedImg);
+			}
+
+			function _onErr() {
+				_left--;
+				0 === _left && callback && callback.call(context, _loadedImg);
+			}
+
 		}
 	};
 });

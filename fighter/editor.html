@@ -1,14 +1,17 @@
 <!DOCTYPE HTML>
 <html>
-<body>
+<head>
 <script src="js/seajs/sea-debug.js"></script>
+<style type="text/css">
+    
+</style>
+</head>
+<body>
+
 <script type="text/javascript">
     var timestamp = 1 || new Date().getTime();
     seajs.config({
         debug: true,
-        alias: {
-            '$': 'jquery/jquery'
-        },
         map: [
             function(url) {
                 url += '?t=';
@@ -20,7 +23,7 @@
     seajs.on('error', function(data) {
         console.log(data);
     });
-    seajs.use('./js/editor',function(editor){
+    seajs.use('./js/editor', function(editor) {
         editor.init();
     });
 </script>
