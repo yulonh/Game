@@ -48,6 +48,7 @@ define(function(require, exports, module) {
             now = 0
             fps = 16,
             interval = 1000 / fps;
+            
         requestAnimationFrame(function() {
             now = new Date().getTime();
             if (i < length) {

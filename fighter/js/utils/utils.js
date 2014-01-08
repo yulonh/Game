@@ -386,7 +386,8 @@ define(function(require, exports, module) {
 			var minWidth = option.minWidth || 0,
 				minHeight = option.minHeight || 0,
 				context = canvas.getContext('2d'),
-				callContext = option.context || this;
+				callContext = option.context || this,
+				callArgs = option.args || [];
 
 			var imgData = context.getImageData(0, 0, canvas.width, canvas.height);
 			var data = imgData.data;
@@ -446,7 +447,7 @@ define(function(require, exports, module) {
 							var _width = xEnd - xStart;
 							if (_width > minWidth && _height > minHeight) {
 								frames.push([xStart, yStart, _width, _height]);
-								onEach && onEach.apply(callContext, [frames.length - 1, frames[frames.length - 1], canvas]);
+								onEach && onEach.apply(callContext, [frames.length - 1, frames[frames.length - 1], canvas].concat(callArgs));
 							}
 							xStart = null;
 						}
