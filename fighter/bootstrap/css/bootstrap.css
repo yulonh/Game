@@ -1896,7 +1896,7 @@ textarea.input-lg {
     text-align: right;
   }
 }
-.btn {
+.ui-selectee,.btn {
   display: inline-block;
   margin-bottom: 0;
   font-weight: normal;
@@ -1943,7 +1943,7 @@ fieldset[disabled] .btn {
   -webkit-box-shadow: none;
   box-shadow: none;
 }
-.btn-default {
+.ui-selectee,.btn-default {
   color: #333333;
   background-color: #ffffff;
   border-color: #cccccc;
@@ -1984,7 +1984,7 @@ fieldset[disabled] .btn-default.active {
   color: #ffffff;
   background-color: #fff;
 }
-.btn-primary {
+.ui-selected,.btn-primary {
   color: #ffffff;
   background-color: #428bca;
   border-color: #357ebd;
