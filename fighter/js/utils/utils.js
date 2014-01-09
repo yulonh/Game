@@ -27,39 +27,27 @@ define(function(require, exports, module) {
 			outCtx.putImageData(imgData, 0, 0);
 			return outCanvas;
 		},
-		img2SpriteSheet: function(image, minWidth, minHeight) {
-			minWidth = minWidth || 0;
-			minHeight = minHeight || 0;
+		//根据背景色分割图像
+		dividedImage: function(canvas, onEach, option) {
+			var minWidth = option.minWidth || 0,
+				minHeight = option.minHeight || 0,
+				context = canvas.getContext('2d'),
+				callContext = option.context || this,
+				callArgs = option.args || [];
 
-			var imgCanvas = this.img2Canvas(image);
-			var outCanvas = imgCanvas.cloneNode();
-
-			var imgCtx = imgCanvas.getContext('2d'),
-				outCtx = outCanvas.getContext('2d');
-
-			var imgData = imgCtx.getImageData(0, 0, imgCanvas.width, imgCanvas.height);
+			var imgData = context.getImageData(0, 0, canvas.width, canvas.height);
 			var data = imgData.data;
 
-			var bgColor = [data[0], data[1], data[2], data[3]];
-			var frames = [],
-				outFrames = [],
-				anims = {},
-				startFrame = 0;
+			var bgColor = option.bgColor || [data[0], data[1], data[2], data[3]];
+
+			var frames = [];
 
 			var lineBgPointCount = 0,
-				w = imgCanvas.width,
-				h = imgCanvas.height,
+				w = canvas.width,
+				h = canvas.height,
 				yStart = 0,
 				xEnd = null,
-				xStart = null,
-				animIndex = 0,
-				curAnimFrames = [],
-				outMaxWidth = 0,
-				outLineMaxHeight = 0,
-				curOutX = 0,
-				curOutY = 0,
-				lastOutX = 0,
-				lastOutY = 0;
+				xStart = null;
 
 			for (var y = 0; y < h; y++) { // 竖向扫描
 				lineBgPointCount = 0; // 找到的背景颜色点数
@@ -72,13 +60,13 @@ define(function(require, exports, module) {
 						} else {
 							break;
 						}
-					} else if (!isBgPoint) { //找到开始坐标
+					} else if (!isBgPoint) { //找到开始y坐标
 						yStart = y;
 						break;
 					}
 				}
 
-				if (yStart && lineBgPointCount === w) { //找到结束y坐标
+				if (yStart && lineBgPointCount === w && y - yStart >= minHeight) { //找到结束y坐标
 					xStart = null, xEnd = null;
 					var _height = y - yStart;
 					for (var x = 0; x < w; x++) {
@@ -86,7 +74,7 @@ define(function(require, exports, module) {
 
 						for (var y1 = yStart; y1 < y; y1++) {
 							var i = (y1 * w + x) * 4;
-							var isBgPoint = (data[i] === bgColor[0] && data[i + 1] === bgColor[1] && data[i + 2] === bgColor[2] && data[i + 3] === bgColor[3]);
+							var isBgPoint = (data[i] === bgColor[0] && data[i + 1] === bgColor[1] && data[i + 2] === bgColor[2]);
 
 							if (xStart !== null) { // 已找到开始x坐标，找结束x坐标
 								if (isBgPoint) {
@@ -95,48 +83,79 @@ define(function(require, exports, module) {
 									break;
 								}
 							} else if (!isBgPoint) { //找到开始x坐标
-								xStart = x - 1;
+								xStart = x;
 								break;
 							}
 						};
 
-						if (xStart && lineBgPointCount === _height) { //找到结束x坐标
+						if (xStart && lineBgPointCount === _height && x - xStart >= minWidth) { //找到结束x坐标
 							xEnd = x;
 							var _width = xEnd - xStart;
-							if (_width > minWidth && _height > minHeight) { //找到帧
-								frames.push([xStart, yStart, _width, _height, 0, _width / 2, _height]);
-								if (curOutX + _width > w) { //下一行
-									curOutX = 0;
-									curOutY += outLineMaxHeight;
-									outLineMaxHeight = 0;
-								}
-								outCtx.drawImage(imgCanvas, xStart, yStart, _width, _height, curOutX, curOutY, _width, _height);
-								outFrames.push([curOutX, curOutY, _width, _height, 0, _width / 2, _height]);
-								curOutX += _width;
-								if (outLineMaxHeight < _height) { //当前行最大高度
-									outLineMaxHeight = _height;
-								}
-								if (outMaxWidth < curOutX) { //计算最大宽度
-									outMaxWidth = curOutX;
-								}
+							if (_width > minWidth && _height > minHeight) {
+								frames.push([xStart, yStart, _width, _height]);
+								onEach && onEach.apply(callContext, [frames.length - 1, frames[frames.length - 1], canvas].concat(callArgs));
 							}
 							xStart = null;
 						}
 					};
-					// add a named animation using the frame index:
-					anims["anim_" + animIndex] = [startFrame, frames.length - 1, 'anim_3'];
-					startFrame = frames.length;
-					animIndex++;
 					yStart = 0;
 				}
 			}
-			//imgCtx.putImageData(imgData, 0, 0);
-			outCanvas = this.makeAlpha(outCanvas, 0, 0, outMaxWidth, curOutY + outLineMaxHeight);
+			return frames;
+		},
+		img2SpriteSheet: function(image, onEach, option) {
+			var minWidth = option.minWidth || 0,
+				minHeight = option.minHeight || 0,
+				callContext = option.context || this,
+				callArgs = option.args || []
+
+			var imgCanvas = this.img2Canvas(image);
+			var outCanvas = imgCanvas.cloneNode(),
+				width = imgCanvas.width,
+				height = imgCanvas.height;
+
+			var imgCtx = imgCanvas.getContext('2d'),
+				outCtx = outCanvas.getContext('2d');
+
+			var curOutX = 0,
+				curOutY = 0,
+				outMaxWidth = 0,
+				outMaxLineHeight = 0,
+				outFrames = [],
+				rawFrames = [];
+
+			rawFrames = this.dividedImage(imgCanvas, function(i, rect, rawCanvas, ctx, w, outFrames, onEach, outCanvas) {
+				var xStart = rect[0],
+					yStart = rect[1],
+					_width = rect[2],
+					_height = rect[3];
+
+				if (curOutX + _width > w) { //下一行
+					curOutX = 0;
+					curOutY += outMaxLineHeight;
+					outMaxLineHeight = 0;
+				}
+				ctx.drawImage(imgCanvas, xStart, yStart, _width, _height, curOutX, curOutY, _width, _height);
+				outFrames.push([curOutX, curOutY, _width, _height, 0, _width / 2, _height]);
+				onEach && onEach.apply(callContext, [outFrames.length - 1, outFrames[outFrames.length - 1], outCanvas].concat(callArgs));
+				curOutX += _width;
+				if (outMaxLineHeight < _height) { //当前行最大高度
+					outMaxLineHeight = _height;
+				}
+				if (outMaxWidth < curOutX) { //计算最大宽度
+					outMaxWidth = curOutX;
+				}
+			}, {
+				minWidth: minWidth,
+				minHeight: minHeight,
+				args: [outCtx, width, outFrames, onEach, outCanvas]
+			});
+
+			outCanvas = this.makeAlpha(outCanvas, 0, 0, outMaxWidth, curOutY + outMaxLineHeight);
 			outCtx = outCanvas.getContext('2d');
 
 			if (this.debug) {
 				doc.body.appendChild(outCanvas);
-				//doc.body.appendChild(imgCanvas);
 				var len = outFrames.length;
 				outCtx.font = "10px Georgia";
 				outCtx.fillStyle = "#FF0033";
@@ -152,9 +171,8 @@ define(function(require, exports, module) {
 			return {
 				images: [outCanvas],
 				frames: outFrames,
-				animations: anims,
-				rawImages: imgCanvas,
-				rawFrames: frames
+				rawImage: imgCanvas,
+				rawFrames: rawFrames
 			};
 		},
 		downloadImage: function(canvas) {
@@ -380,82 +398,6 @@ define(function(require, exports, module) {
 			}
 			//显示二值化图像
 			context.putImageData(canvasData, 0, 0);
-		},
-		//根据背景色分割图像
-		dividedImage: function(canvas, onEach, option) {
-			var minWidth = option.minWidth || 0,
-				minHeight = option.minHeight || 0,
-				context = canvas.getContext('2d'),
-				callContext = option.context || this,
-				callArgs = option.args || [];
-
-			var imgData = context.getImageData(0, 0, canvas.width, canvas.height);
-			var data = imgData.data;
-
-			var bgColor = option.bgColor || [data[0], data[1], data[2], data[3]];
-
-			var frames = [];
-
-			var lineBgPointCount = 0,
-				w = canvas.width,
-				h = canvas.height,
-				yStart = 0,
-				xEnd = null,
-				xStart = null;
-
-			for (var y = 0; y < h; y++) { // 竖向扫描
-				lineBgPointCount = 0; // 找到的背景颜色点数
-				for (var x = 0; x < w; x++) {
-					var i = (y * w + x) * 4;
-					var isBgPoint = (data[i] === bgColor[0] && data[i + 1] === bgColor[1] && data[i + 2] === bgColor[2]);
-					if (yStart) { // 已找到开始y坐标，找结束y坐标
-						if (isBgPoint) {
-							lineBgPointCount++;
-						} else {
-							break;
-						}
-					} else if (!isBgPoint) { //找到开始y坐标
-						yStart = y;
-						break;
-					}
-				}
-
-				if (yStart && lineBgPointCount === w && y - yStart >= minHeight) { //找到结束y坐标
-					xStart = null, xEnd = null;
-					var _height = y - yStart;
-					for (var x = 0; x < w; x++) {
-						lineBgPointCount = 0;
-
-						for (var y1 = yStart; y1 < y; y1++) {
-							var i = (y1 * w + x) * 4;
-							var isBgPoint = (data[i] === bgColor[0] && data[i + 1] === bgColor[1] && data[i + 2] === bgColor[2]);
-
-							if (xStart !== null) { // 已找到开始x坐标，找结束x坐标
-								if (isBgPoint) {
-									lineBgPointCount++;
-								} else {
-									break;
-								}
-							} else if (!isBgPoint) { //找到开始x坐标
-								xStart = x;
-								break;
-							}
-						};
-
-						if (xStart && lineBgPointCount === _height && x - xStart >= minWidth) { //找到结束x坐标
-							xEnd = x;
-							var _width = xEnd - xStart;
-							if (_width > minWidth && _height > minHeight) {
-								frames.push([xStart, yStart, _width, _height]);
-								onEach && onEach.apply(callContext, [frames.length - 1, frames[frames.length - 1], canvas].concat(callArgs));
-							}
-							xStart = null;
-						}
-					};
-					yStart = 0;
-				}
-			}
-			return frames;
 		},
 		loadImg: function(imgs, callback, context) {
 			if (!imgs || imgs.length === 0) {
