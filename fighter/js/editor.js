@@ -10,7 +10,7 @@ define(function(require, exports, module) {
 	var editor = {
 		canvasWrap: $('#canvas_wrap'),
 		animWrap: $('#anim_accordion'),
-		animations: {},
+		sprites: {},
 		collapseTemplate: $('#anim_template').html(),
 		init: function() {
 			utils.loadImg([{
@@ -50,19 +50,15 @@ define(function(require, exports, module) {
 				max: 100,
 				min: 1,
 				create: function(e, ui) {
-					$(e.target).attr('data-anim', title).val(1);
+					$(e.target).val(1);
 				},
-				change: $.proxy(function(e, ui) {
-					var input = $(e.target);
-					var anim = input.attr('data-anim');
-					this.animations[anim].speed = parseInt(input.val());
+				spin: $.proxy(function(e, ui) {
+					this.updatePreview();
 				}, this)
 			});
 
-			collapse.find('select[name="next"]').attr('data-anim', title).change($.proxy(function(e) {
-				var input = $(e.target);
-				var anim = input.attr('data-anim');
-				this.animations[anim].next = input.val()
+			collapse.find('select[name="next"]').change($.proxy(function(e) {
+				this.updatePreview();
 			}, this));
 
 			return collapse;
@@ -78,6 +74,18 @@ define(function(require, exports, module) {
 			return this.animWrap.find('.panel-collapse.in').parent();
 		},
 		bindEvent: function() {
+			//帧频率
+			jqueryUI('#global_speed').spinner({
+				max: 100,
+				min: 1,
+				create: function(e, ui) {
+					$(e.target).val(1);
+				},
+				spin: $.proxy(function() {
+					this.updatePreview();
+				}, this)
+			});
+			//帧选择
 			jqueryUI('#canvas_wrap').selectable({
 				start: function(event, ui) {},
 				selecting: function(event, ui) {
@@ -91,12 +99,7 @@ define(function(require, exports, module) {
 					$(".ui-selected", e.target).each(function() {
 						selectedArray.push($(this).attr('data-i'));
 					});
-					var animPanel = this.getEditingAnimPanel();
-					if (animPanel.length) {
-						var animName = animPanel.find('input[name="name"]').val().trim();
-						this.animations[animName].frames = selectedArray;
-						animPanel.find('input[name="frames"]').val(selectedArray.join(','));
-					}
+					this.updatePreview(selectedArray);
 				}, this)
 			});
 
@@ -108,69 +111,71 @@ define(function(require, exports, module) {
 					return;
 				}
 
-				if (this.animations[animName]) {
+				if (this.spriteSheetData.animations[animName]) {
 					return;
 				}
-				this.animations[animName] = {};
+				this.spriteSheetData.animations[animName] = {};
 				var collapse = this.createCollapse(animName, 'anim_accordion');
 				this.animWrap.append(collapse);
 				this.updateAnimSelect();
 
-				this.animations[animName] = {
+				this.spriteSheetData.animations[animName] = {
 					frames: [],
 					next: collapse.find('selct[name="next"]').val(),
 					speed: collapse.find('input[name="speed"]').val()
 				};
 
-			}, this));
+				this.createPreview(animName, collapse.find('.preview-wrap canvas')[0]);
 
-			//添加动画帧
-			$('#anim_accordion').delegate('div.panel-default', 'click', $.proxy(function(e) {
-				e.preventDefault();
-				var animPanel = $(e.currentTarget);
-				var btn = $(e.target);
-				var animName = animPanel.find('input[name="name"]').val();
-
-				console.log(e.target);
-
-				var action = btn.attr('action'),
-					selectedIndexs;
-
-				if (!action) {
-					return;
-				}
-
-				switch (action) {
-					case 'add_frame':
-						selectedIndexs = this.getSelectedFrameIndex();
-						this.animations[animName].frames = selectedIndexs;
-						break;
-					case 'preview':
-						var stageCanvas = utils.createCanvas(200, 200);
-						var previewPanel = $(btn.attr('href'));
-						previewPanel.html(stageCanvas);
-						this.createPreview(animName, stageCanvas)
-						break;
-				}
 			}, this));
 		},
 		updateAnimSelect: function() {
 			var options = [];
-			for (var anim in this.animations) {
-				if (this.animations.hasOwnProperty(anim)) {
+			for (var anim in this.spriteSheetData.animations) {
+				if (this.spriteSheetData.animations.hasOwnProperty(anim)) {
 					options.push('<option>' + anim + '</option>');
 				}
 			};
 			$('select[name="next"]').html(options.join('\n'));
 		},
+		updatePreview: function() {
+			var editingPanel = this.getEditingAnimPanel(),
+				frames = this.getSelectedFrameIndex();
+
+			if (0 === editingPanel.length) {
+				return;
+			}
+
+			var animName = editingPanel.find('input[name="name"]').val().trim()
+			var sprite = this.sprites[animName];
+
+			if (!sprite) {
+				return;
+			}
+
+			if ( !! frames) {
+				this.spriteSheetData.animations[animName].frames = frames;
+			}
+
+			var speed = editingPanel.find('input[name="speed"]').val(),
+				next = editingPanel.find('select[name="next"]').val(),
+				framerate = $('#global_speed').val();
+
+			this.spriteSheetData.animations[animName].speed = speed;
+			this.spriteSheetData.animations[animName].next = next;
+			sprite.framerate = framerate;
+
+			sprite.spriteSheet = new SpriteSheet(this.spriteSheetData);
+			sprite.gotoAndPlay(animName);
+		},
 		createPreview: function(animName, canvas) {
-			//var stageCanvas = utils.createCanvas(290, 290);
-			this.spriteSheetData.animations = this.animations;
 			var stage = new Stage(canvas);
 			var spriteSheet = new SpriteSheet(this.spriteSheetData);
 			var sprite = new Sprite(spriteSheet, animName);
 			sprite.x = 50;
 			sprite.y = 200;
+			sprite.framerate = $('#global_speed').val();
+			this.sprites[animName] = sprite;
 			stage.addChild(sprite);
 			Ticker.addEventListener('tick', stage);
 		},
@@ -187,6 +192,8 @@ define(function(require, exports, module) {
 				minHeight: 40,
 				context: this
 			});
+
+			this.spriteSheetData.animations = {};
 		}
 	};
 

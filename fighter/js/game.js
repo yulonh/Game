@@ -48,9 +48,6 @@ define(function(require, exports, module) {
                 src: "player2.png",
                 id: "player2"
             }, {
-                src: "player2.png",
-                id: "player2"
-            }, {
                 src: "player3.png",
                 id: "player4"
             }, {
@@ -144,7 +141,7 @@ define(function(require, exports, module) {
                 },
                 animations: {
                     idle: [0, 8, 'idle'],
-                    walk: [17, 24, 'walk']
+                    walk: [17, 24, 'walk'],
                     //,
                     // run: [37, 44, 'idle'],
                     // jump: [165, 171, 'idle'],
@@ -164,9 +161,9 @@ define(function(require, exports, module) {
                     // shockwave1: [357, 369, 'idle'], //
                     // shockwave2: [370, 386, 'idle'], //
                     // shockwave3: [250, 257, 'idle'],
-                    // hurt: [300, 305, 'idle'],
-                    // knockdown: [313, 322, 'dizziness'], //击倒
-                    // dizziness: [327, 330, 'idle'], //眩晕
+                    hurt: [300, 305, 'idle'],
+                    knockdown: [313, 322, 'dizziness'], //击倒
+                    dizziness: [327, 330, 'idle'], //眩晕
                     // tease: [605, 621, 'idle']
                 }
             });

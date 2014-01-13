@@ -9,7 +9,10 @@ define(function(require, exports, module) {
         if (!option.img) {
             throw 'the img attribute of option must be set!';
         }
-        var spriteSheetData = utils.img2SpriteSheet(option.img, 30, 30);
+        var spriteSheetData = utils.img2SpriteSheet(option.img, function() {}, {
+            minWidth: 30,
+            minHeight: 30
+        });
 
         spriteSheetData.animations = option.animations || spriteSheetData.animations;
 
