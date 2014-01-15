@@ -1,35 +1,11 @@
-! function(win, doc) {
-    (function() {
+define(function(require, exports, module) {
+    require('bbengine/utils/compensation');
 
-        var vendors = ['webkit', 'moz'];
-        for (var x = 0; x < vendors.length && !window.requestAnimationFrame; ++x) {
-            window.requestAnimationFrame = window[vendors[x] + 'RequestAnimationFrame'];
-            window.cancelAnimationFrame = window[vendors[x] + 'CancelAnimationFrame'] || // Webkit中此取消方法的名字变了
-            window[vendors[x] + 'CancelRequestAnimationFrame'];
-        }
-
-        if (!window.requestAnimationFrame) {
-            var lastTime = 0;
-            window.requestAnimationFrame = function(callback, element) {
-                var currTime = new Date().getTime();
-                var timeToCall = Math.max(0, 16.7 - (currTime - lastTime));
-
-                var id = window.setTimeout(function() {
-                    lastTime = new Date().getTime();
-                    callback(lastTime);
-                }, timeToCall);
-
-                return id;
-            };
-        }
-        if (!window.cancelAnimationFrame) {
-            window.cancelAnimationFrame = function(id) {
-                clearTimeout(id);
-            };
-        }
-    }());
-
+    var win = window,
+        doc = document;
+        
     var last = new Date().getTime();
+
     requestAnimationFrame(function() {
         var cur = new Date().getTime();
         console.log(cur - last);
@@ -38,7 +14,7 @@
         requestAnimationFrame(arguments.callee);
     });
 
-    console =  {
+    console = {
         log: function() {
             var l = arguments.length;
             for (var i = 0; i < l; i++) {
@@ -172,5 +148,5 @@
     };
     Game.init();
 
-    win.Game = Game;
-}(window, document);
+    return Game;
+});
